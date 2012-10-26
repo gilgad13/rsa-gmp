@@ -119,6 +119,8 @@ void generate_keys(private_key* ku, public_key* kp)
     mpz_set(kp->e, ku->e);
     mpz_set(kp->n, ku->n);
 
+    mpz_clears(phi, tmp1, tmp2, NULL);
+
     return;
 }
 
