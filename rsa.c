@@ -25,7 +25,7 @@ void block_decrypt(mpz_t M, mpz_t C, private_key ku);
 void generate_keys(private_key* ku, public_key* kp)
 {
     char buf[BUFFER_SIZE];
-    int i;
+    size_t i;
     mpz_t phi;
     mpz_t tmp1;
     mpz_t tmp2;
@@ -119,7 +119,7 @@ void block_decrypt(mpz_t M, mpz_t C, private_key ku)
     return;
 }
 
-int encrypt(char cipher[], char message[], int length, public_key kp)
+size_t encrypt(char* cipher, char* message, size_t length, public_key kp)
 {
     /* Its probably overkill, but I implemented PKCS#1v1.5 paging
      * Encoded message block is of the form:
@@ -129,12 +129,12 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
      * |D| must be less than block_size - 11, which means we have at least 8
      * bytes of PS
      */
-    int block_count = 0;
-    int prog = length;
+    size_t block_count = 0;
+    size_t prog = length;
     char mess_block[BLOCK_SIZE];
-    int i;
-    int d_len;
-    int off;
+    size_t i;
+    size_t d_len;
+    size_t off;
     mpz_t m;
     mpz_t c;
     mpz_init(m);
@@ -175,12 +175,12 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
     return block_count * BLOCK_SIZE;
 }
 
-int decrypt(char* message, char* cipher, int length, private_key ku)
+size_t decrypt(char* message, char* cipher, size_t length, private_key ku)
 {
-    int msg_idx = 0;
+    size_t msg_idx = 0;
     char buf[BLOCK_SIZE] = {0};
-    int i, j;
-    int off;
+    size_t i, j;
+    size_t off;
     mpz_t c;
     mpz_t m;
 
