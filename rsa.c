@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <gmp.h>
+#include <time.h>
 
 #define MODULUS_SIZE 1024                   /* This is the number of bits we want in the modulus */
 #define BLOCK_SIZE (MODULUS_SIZE/8)         /* This is the size of a block that gets en/decrypted at once */
@@ -46,30 +47,33 @@ void generate_keys(private_key* ku, public_key* kp)
 {
     char buf[BUFFER_SIZE];
     int i;
-    mpz_t phi; mpz_init(phi);
-    mpz_t tmp1; mpz_init(tmp1);
-    mpz_t tmp2; mpz_init(tmp2);
+    mpz_t phi;
+    mpz_t tmp1;
+    mpz_t tmp2;
+    mpz_init(phi);
+    mpz_init(tmp2);
+    mpz_init(tmp1);
 
     srand(time(NULL));
 
     /* Insetead of selecting e st. gcd(phi, e) = 1; 1 < e < phi, lets choose e
      * first then pick p,q st. gcd(e, p-1) = gcd(e, q-1) = 1 */
-    // We'll set e globally.  I've seen suggestions to use primes like 3, 17 or 
-    // 65537, as they make coming calculations faster.  Lets use 3.
+    /* We'll set e globally.  I've seen suggestions to use primes like 3, 17 or
+     * 65537, as they make coming calculations faster.  Lets use 3. */
     mpz_set_ui(ku->e, 3); 
 
     /* Select p and q */
     /* Start with p */
-    // Set the bits of tmp randomly
+    /* Set the bits of tmp randomly */
     for(i = 0; i < BUFFER_SIZE; i++)
         buf[i] = rand() % 0xFF; 
-    // Set the top two bits to 1 to ensure int(tmp) is relatively large
+    /* Set the top two bits to 1 to ensure int(tmp) is relatively large */
     buf[0] |= 0xC0;
-    // Set the bottom bit to 1 to ensure int(tmp) is odd (better for finding primes)
+    /* Set the bottom bit to 1 to ensure int(tmp) is odd (better for finding primes) */
     buf[BUFFER_SIZE - 1] |= 0x01;
-    // Interpret this char buffer as an int
+    /* Interpret this char buffer as an int */
     mpz_import(tmp1, BUFFER_SIZE, 1, sizeof(buf[0]), 0, 0, buf);
-    // Pick the next prime starting from that random number
+    /* Pick the next prime starting from that random number */
     mpz_nextprime(ku->p, tmp1);
     /* Make sure this is a good choice*/
     mpz_mod(tmp2, ku->p, ku->e);        /* If p mod e == 1, gcd(phi, e) != 1 */
@@ -83,13 +87,13 @@ void generate_keys(private_key* ku, public_key* kp)
     do {
         for(i = 0; i < BUFFER_SIZE; i++)
             buf[i] = rand() % 0xFF; 
-        // Set the top two bits to 1 to ensure int(tmp) is relatively large
+        /* Set the top two bits to 1 to ensure int(tmp) is relatively large */
         buf[0] |= 0xC0;
-        // Set the bottom bit to 1 to ensure int(tmp) is odd
+        /* Set the bottom bit to 1 to ensure int(tmp) is odd */
         buf[BUFFER_SIZE - 1] |= 0x01;
-        // Interpret this char buffer as an int
+        /* Interpret this char buffer as an int */
         mpz_import(tmp1, (BUFFER_SIZE), 1, sizeof(buf[0]), 0, 0, buf);
-        // Pick the next prime starting from that random number
+        /* Pick the next prime starting from that random number */
         mpz_nextprime(ku->q, tmp1);
         mpz_mod(tmp2, ku->q, ku->e);
         while(!mpz_cmp_ui(tmp2, 1))
@@ -142,13 +146,18 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
     int block_count = 0;
     int prog = length;
     char mess_block[BLOCK_SIZE];
-    mpz_t m; mpz_init(m);
-    mpz_t c; mpz_init(c);
+    int i;
+    int d_len;
+    int off;
+    mpz_t m;
+    mpz_t c;
+    mpz_init(m);
+    mpz_init(c);
 
     while(prog > 0)
     {
-        int i = 0;
-        int d_len = (prog >= (BLOCK_SIZE - 11)) ? BLOCK_SIZE - 11 : prog;
+        i = 0;
+        d_len = (prog >= (BLOCK_SIZE - 11)) ? BLOCK_SIZE - 11 : prog;
 
         /* Construct the header */
         mess_block[i++] = 0x00;
@@ -160,18 +169,18 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
         /* Copy in the message */
         memcpy(mess_block + i, message + (length - prog), d_len);
         
-        // Convert bytestream to integer 
+        /* Convert bytestream to integer */
         mpz_import(m, BLOCK_SIZE, 1, sizeof(mess_block[0]), 0, 0, mess_block);
-        // Perform encryption on that block
+        /* Perform encryption on that block */
         block_encrypt(c, m, kp);
 
-        // Calculate cipher write offset to take into account that we want to
-        // pad with zeros in the front if the number we get back has fewer bits
-        // than BLOCK_SIZE
-        int off = block_count * BLOCK_SIZE;         // Base offset to start of this block
-        off += (BLOCK_SIZE - (mpz_sizeinbase(c, 2) + 8 - 1)/8); // See manual for mpz_export
+        /* Calculate cipher write offset to take into account that we want to
+         * pad with zeros in the front if the number we get back has fewer bits
+         * than BLOCK_SIZE */
+        off = block_count * BLOCK_SIZE;         /* Base offset to start of this block */
+        off += (BLOCK_SIZE - (mpz_sizeinbase(c, 2) + 8 - 1)/8); /* See manual for mpz_export */
         
-        // Pull out bytestream of ciphertext
+        /* Pull out bytestream of ciphertext */
         mpz_export(cipher + off, NULL, 1, sizeof(char), 0, 0, c);
 
         block_count++;
@@ -189,32 +198,34 @@ void block_decrypt(mpz_t M, mpz_t C, private_key ku)
 int decrypt(char* message, char* cipher, int length, private_key ku)
 {
     int msg_idx = 0;
-    char buf[BLOCK_SIZE];
-    *(long long*)buf = 0ll;
-    mpz_t c; mpz_init(c);
-    mpz_t m; mpz_init(m);
+    char buf[BLOCK_SIZE] = {0};
+    int i, j;
+    int off;
+    mpz_t c;
+    mpz_t m;
 
-    int i;
+    mpz_init(c);
+    mpz_init(m);
+
     for(i = 0; i < (length / BLOCK_SIZE); i++)
     {
-        // Pull block into mpz_t
+        /* Pull block into mpz_t */
         mpz_import(c, BLOCK_SIZE, 1, sizeof(char), 0, 0, cipher + i * BLOCK_SIZE);
-        // Decrypt block
+        /* Decrypt block */
         block_decrypt(m, c, ku);
 
-        // Calculate message write offset to take into account that we want to
-        // pad with zeros in the front if the number we get back has fewer bits
-        // than BLOCK_SIZE
-        int off = (BLOCK_SIZE - (mpz_sizeinbase(m, 2) + 8 - 1)/8); // See manual for mpz_export
-        // Convert back to bitstream
+        /* Calculate message write offset to take into account that we want to
+         * pad with zeros in the front if the number we get back has fewer bits
+         * than BLOCK_SIZE */
+        off = (BLOCK_SIZE - (mpz_sizeinbase(m, 2) + 8 - 1)/8); /* See manual for mpz_export */
+        /* Convert back to bitstream */
         mpz_export(buf + off, NULL, 1, sizeof(char), 0, 0, m);
 
-        // Now we just need to lop off top padding before memcpy-ing to message
-        // We know the first 2 bytes are 0x00 and 0x02, so manually skip those
-        // After that, increment forward till we see a zero byte
-        int j;
+        /* Now we just need to lop off top padding before memcpy-ing to message
+         * We know the first 2 bytes are 0x00 and 0x02, so manually skip those
+         * After that, increment forward till we see a zero byte */
         for(j = 2; ((buf[j] != 0) && (j < BLOCK_SIZE)); j++);
-        j++;        // Skip the 00 byte
+        j++;        /* Skip the 00 byte */
 
         /* Copy over the message part of the plaintext to the message return var */
         memcpy(message + msg_idx, buf + j, BLOCK_SIZE - j);
@@ -227,16 +238,21 @@ int decrypt(char* message, char* cipher, int length, private_key ku)
 int main()
 {
     int i;
-    mpz_t M;  mpz_init(M);
-    mpz_t C;  mpz_init(C);
-    mpz_t DC;  mpz_init(DC);
+    mpz_t M;
+    mpz_t C;
+    mpz_t DC;
     private_key ku;
     public_key kp;
+    char buf[6*BLOCK_SIZE]; 
 
-    // Initialize public key
+    mpz_init(M);
+    mpz_init(C);
+    mpz_init(DC);
+
+    /* Initialize public key */
     mpz_init(kp.n);
     mpz_init(kp.e); 
-    // Initialize private key
+    /* Initialize private key */
     mpz_init(ku.n); 
     mpz_init(ku.e); 
     mpz_init(ku.d); 
@@ -254,7 +270,6 @@ int main()
     printf("ku.p is [%s]\n", mpz_get_str(NULL, 16, ku.p));
     printf("ku.q is [%s]\n", mpz_get_str(NULL, 16, ku.q));
 
-    char buf[6*BLOCK_SIZE]; 
     for(i = 0; i < 6*BLOCK_SIZE; i++)
         buf[i] = rand() % 0xFF;
 
