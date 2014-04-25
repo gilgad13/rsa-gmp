@@ -36,9 +36,6 @@ typedef struct {
 /* NOTE: Assumes mpz_t's are initted in ku and kp */
 void generate_keys(private_key* ku, public_key* kp);
 
-void block_encrypt(mpz_t C, mpz_t M, public_key kp);
-void block_decrypt(mpz_t M, mpz_t C, private_key ku);
-
 int encrypt(char* cipher, char* message, int length, public_key kp);
 int decrypt(char* message, char* cipher, int length, private_key ku);
 
