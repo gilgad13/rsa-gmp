@@ -27,16 +27,13 @@ void print_hex(char* arr, int len)
 int main()
 {
     int i;
-    mpz_t M;
-    mpz_t C;
-    mpz_t DC;
     private_key ku;
     public_key kp;
-    char buf[6*BLOCK_SIZE];
-
-    mpz_init(M);
-    mpz_init(C);
-    mpz_init(DC);
+    size_t message_size = 1234;
+    size_t buf_size = 4 * message_size;
+    size_t cipher_size;
+    char* message;
+    char* cipher;
 
     /* Initialize public key */
     mpz_init(kp.n);
@@ -59,14 +56,27 @@ int main()
     printf("ku.p is [%s]\n", mpz_get_str(NULL, 16, ku.p));
     printf("ku.q is [%s]\n", mpz_get_str(NULL, 16, ku.q));
 
-    for(i = 0; i < 6*BLOCK_SIZE; i++)
-        buf[i] = rand() % 0xFF;
+    message = (char*) malloc(message_size * sizeof(*message));
+    for(i = 0; i < message_size; i++)
+        message[i] = rand() % 0xFF;
 
-    mpz_import(M, (6*BLOCK_SIZE), 1, sizeof(buf[0]), 0, 0, buf);
-    printf("original is [%s]\n", mpz_get_str(NULL, 16, M));
-    block_encrypt(C, M, kp);
-    printf("encrypted is [%s]\n", mpz_get_str(NULL, 16, C));
-    block_decrypt(DC, C, ku);
-    printf("decrypted is [%s]\n", mpz_get_str(NULL, 16, DC));
+    puts("original is:");
+    print_hex(message, message_size);
+    puts("");
+
+    cipher = (char*) malloc(buf_size);
+    cipher_size = encrypt(cipher, message, message_size, kp);
+    puts("encrypted is:");
+    print_hex(cipher, cipher_size);
+    puts("");
+
+    message_size = decrypt(message, cipher, cipher_size, ku);
+    puts("decrypted is:");
+    print_hex(message, message_size);
+    puts("");
+
+    free(message);
+    free(cipher);
+
     return 0;
 }
