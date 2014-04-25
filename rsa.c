@@ -39,7 +39,7 @@ void print_hex(char* arr, int len)
 {
     int i;
     for(i = 0; i < len; i++)
-        printf("%02x", (unsigned char) arr[i]); 
+        printf("%02x", (unsigned char) arr[i]);
 }
 
 /* NOTE: Assumes mpz_t's are initted in ku and kp */
@@ -60,13 +60,13 @@ void generate_keys(private_key* ku, public_key* kp)
      * first then pick p,q st. gcd(e, p-1) = gcd(e, q-1) = 1 */
     /* We'll set e globally.  I've seen suggestions to use primes like 3, 17 or
      * 65537, as they make coming calculations faster.  Lets use 3. */
-    mpz_set_ui(ku->e, 3); 
+    mpz_set_ui(ku->e, 3);
 
     /* Select p and q */
     /* Start with p */
     /* Set the bits of tmp randomly */
     for(i = 0; i < BUFFER_SIZE; i++)
-        buf[i] = rand() % 0xFF; 
+        buf[i] = rand() % 0xFF;
     /* Set the top two bits to 1 to ensure int(tmp) is relatively large */
     buf[0] |= 0xC0;
     /* Set the bottom bit to 1 to ensure int(tmp) is odd (better for finding primes) */
@@ -77,7 +77,7 @@ void generate_keys(private_key* ku, public_key* kp)
     mpz_nextprime(ku->p, tmp1);
     /* Make sure this is a good choice*/
     mpz_mod(tmp2, ku->p, ku->e);        /* If p mod e == 1, gcd(phi, e) != 1 */
-    while(!mpz_cmp_ui(tmp2, 1))         
+    while(!mpz_cmp_ui(tmp2, 1))
     {
         mpz_nextprime(ku->p, ku->p);    /* so choose the next prime */
         mpz_mod(tmp2, ku->p, ku->e);
@@ -86,7 +86,7 @@ void generate_keys(private_key* ku, public_key* kp)
     /* Now select q */
     do {
         for(i = 0; i < BUFFER_SIZE; i++)
-            buf[i] = rand() % 0xFF; 
+            buf[i] = rand() % 0xFF;
         /* Set the top two bits to 1 to ensure int(tmp) is relatively large */
         buf[0] |= 0xC0;
         /* Set the bottom bit to 1 to ensure int(tmp) is odd */
@@ -129,7 +129,7 @@ void generate_keys(private_key* ku, public_key* kp)
 void block_encrypt(mpz_t C, mpz_t M, public_key kp)
 {
     /* C = M^e mod n */
-    mpz_powm(C, M, kp.e, kp.n); 
+    mpz_powm(C, M, kp.e, kp.n);
     return;
 }
 
@@ -163,12 +163,12 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
         mess_block[i++] = 0x00;
         mess_block[i++] = 0x02;
         while(i < (BLOCK_SIZE - d_len - 1))
-            mess_block[i++] = (rand() % (0xFF - 1)) + 1; 
+            mess_block[i++] = (rand() % (0xFF - 1)) + 1;
         mess_block[i++] = 0x00;
 
         /* Copy in the message */
         memcpy(mess_block + i, message + (length - prog), d_len);
-        
+
         /* Convert bytestream to integer */
         mpz_import(m, BLOCK_SIZE, 1, sizeof(mess_block[0]), 0, 0, mess_block);
         /* Perform encryption on that block */
@@ -179,7 +179,7 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
          * than BLOCK_SIZE */
         off = block_count * BLOCK_SIZE;         /* Base offset to start of this block */
         off += (BLOCK_SIZE - (mpz_sizeinbase(c, 2) + 8 - 1)/8); /* See manual for mpz_export */
-        
+
         /* Pull out bytestream of ciphertext */
         mpz_export(cipher + off, NULL, 1, sizeof(char), 0, 0, c);
 
@@ -187,11 +187,11 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
         prog -= d_len;
     }
     return block_count * BLOCK_SIZE;
-} 
+}
 
 void block_decrypt(mpz_t M, mpz_t C, private_key ku)
 {
-    mpz_powm(M, C, ku.d, ku.n); 
+    mpz_powm(M, C, ku.d, ku.n);
     return;
 }
 
@@ -230,8 +230,8 @@ int decrypt(char* message, char* cipher, int length, private_key ku)
         /* Copy over the message part of the plaintext to the message return var */
         memcpy(message + msg_idx, buf + j, BLOCK_SIZE - j);
 
-        msg_idx += BLOCK_SIZE - j; 
-    } 
+        msg_idx += BLOCK_SIZE - j;
+    }
     return msg_idx;
 }
 
@@ -243,7 +243,7 @@ int main()
     mpz_t DC;
     private_key ku;
     public_key kp;
-    char buf[6*BLOCK_SIZE]; 
+    char buf[6*BLOCK_SIZE];
 
     mpz_init(M);
     mpz_init(C);
@@ -251,13 +251,13 @@ int main()
 
     /* Initialize public key */
     mpz_init(kp.n);
-    mpz_init(kp.e); 
+    mpz_init(kp.e);
     /* Initialize private key */
-    mpz_init(ku.n); 
-    mpz_init(ku.e); 
-    mpz_init(ku.d); 
-    mpz_init(ku.p); 
-    mpz_init(ku.q); 
+    mpz_init(ku.n);
+    mpz_init(ku.e);
+    mpz_init(ku.d);
+    mpz_init(ku.p);
+    mpz_init(ku.q);
 
     generate_keys(&ku, &kp);
     printf("---------------Private Key-----------------\n");
@@ -274,7 +274,7 @@ int main()
         buf[i] = rand() % 0xFF;
 
     mpz_import(M, (6*BLOCK_SIZE), 1, sizeof(buf[0]), 0, 0, buf);
-    printf("original is [%s]\n", mpz_get_str(NULL, 16, M)); 
+    printf("original is [%s]\n", mpz_get_str(NULL, 16, M));
     block_encrypt(C, M, kp);
     printf("encrypted is [%s]\n", mpz_get_str(NULL, 16, C));
     block_decrypt(DC, C, ku);
