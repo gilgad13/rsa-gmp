@@ -167,7 +167,8 @@ size_t encrypt(char* cipher, char* message, size_t length, public_key kp)
         off += (BLOCK_SIZE - (mpz_sizeinbase(c, 2) + 8 - 1)/8); /* See manual for mpz_export */
 
         /* Pull out bytestream of ciphertext */
-        mpz_export(cipher + off, NULL, 1, sizeof(char), 0, 0, c);
+        if (cipher != NULL)
+            mpz_export(cipher + off, NULL, 1, sizeof(char), 0, 0, c);
 
         block_count++;
         prog -= d_len;
@@ -208,7 +209,8 @@ size_t decrypt(char* message, char* cipher, size_t length, private_key ku)
         j++;        /* Skip the 00 byte */
 
         /* Copy over the message part of the plaintext to the message return var */
-        memcpy(message + msg_idx, buf + j, BLOCK_SIZE - j);
+        if (message != NULL)
+            memcpy(message + msg_idx, buf + j, BLOCK_SIZE - j);
 
         msg_idx += BLOCK_SIZE - j;
     }

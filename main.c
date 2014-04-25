@@ -29,10 +29,11 @@ int main()
     int i;
     private_key ku;
     public_key kp;
-    size_t message_size = 1234;
-    size_t buf_size = 4 * message_size;
+    const size_t message_size = 1234;
     size_t cipher_size;
+    size_t message_decrypted_size;
     char* message;
+    char* message_decrypted;
     char* cipher;
 
     /* Initialize public key */
@@ -64,19 +65,23 @@ int main()
     print_hex(message, message_size);
     puts("");
 
-    cipher = (char*) malloc(buf_size);
-    cipher_size = encrypt(cipher, message, message_size, kp);
+    cipher_size = encrypt(NULL, message, message_size, kp);
+    cipher = (char*) malloc(cipher_size * sizeof(*cipher));
+    encrypt(cipher, message, message_size, kp);
     puts("encrypted is:");
     print_hex(cipher, cipher_size);
     puts("");
 
-    message_size = decrypt(message, cipher, cipher_size, ku);
+    message_decrypted_size = decrypt(NULL, cipher, cipher_size, ku);
+    message_decrypted = (char*) malloc(message_decrypted_size * sizeof(*message_decrypted));
+    decrypt(message_decrypted, cipher, cipher_size, ku);
     puts("decrypted is:");
-    print_hex(message, message_size);
+    print_hex(message_decrypted, message_decrypted_size);
     puts("");
 
-    free(message);
     free(cipher);
+    free(message);
+    free(message_decrypted);
 
     return 0;
 }
