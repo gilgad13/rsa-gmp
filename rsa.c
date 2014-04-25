@@ -12,35 +12,11 @@
  *                                                                    *
  **********************************************************************/
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <gmp.h>
-#include <time.h>
-
-#define MODULUS_SIZE 1024                   /* This is the number of bits we want in the modulus */
-#define BLOCK_SIZE (MODULUS_SIZE/8)         /* This is the size of a block that gets en/decrypted at once */
-#define BUFFER_SIZE ((MODULUS_SIZE/8) / 2)  /* This is the number of bytes in n and p */
-
-typedef struct {
-    mpz_t n; /* Modulus */
-    mpz_t e; /* Public Exponent */
-} public_key;
-
-typedef struct {
-    mpz_t n; /* Modulus */
-    mpz_t e; /* Public Exponent */
-    mpz_t d; /* Private Exponent */
-    mpz_t p; /* Starting prime p */
-    mpz_t q; /* Starting prime q */
-} private_key;
-
-void print_hex(char* arr, int len)
-{
-    int i;
-    for(i = 0; i < len; i++)
-        printf("%02x", (unsigned char) arr[i]);
-}
+#include <stdlib.h> /* srand */
+#include <time.h> /* time */
+#include <stdio.h> /* fprintf */
+#include <string.h> /* memcpy */
+#include "rsa.h"
 
 /* NOTE: Assumes mpz_t's are initted in ku and kp */
 void generate_keys(private_key* ku, public_key* kp)
@@ -115,8 +91,8 @@ void generate_keys(private_key* ku, public_key* kp)
     if(mpz_invert(ku->d, ku->e, phi) == 0)
     {
         mpz_gcd(tmp1, ku->e, phi);
-        printf("gcd(e, phi) = [%s]\n", mpz_get_str(NULL, 16, tmp1));
-        printf("Invert failed\n");
+        fprintf(stderr, "gcd(e, phi) = [%s]\n", mpz_get_str(NULL, 16, tmp1));
+        fprintf(stderr, "Invert failed\n");
     }
 
     /* Set public key */
@@ -130,6 +106,13 @@ void block_encrypt(mpz_t C, mpz_t M, public_key kp)
 {
     /* C = M^e mod n */
     mpz_powm(C, M, kp.e, kp.n);
+    return;
+}
+
+void block_decrypt(mpz_t M, mpz_t C, private_key ku)
+{
+    /* M = C^d mod n */
+    mpz_powm(M, C, ku.d, ku.n);
     return;
 }
 
@@ -189,12 +172,6 @@ int encrypt(char cipher[], char message[], int length, public_key kp)
     return block_count * BLOCK_SIZE;
 }
 
-void block_decrypt(mpz_t M, mpz_t C, private_key ku)
-{
-    mpz_powm(M, C, ku.d, ku.n);
-    return;
-}
-
 int decrypt(char* message, char* cipher, int length, private_key ku)
 {
     int msg_idx = 0;
@@ -233,51 +210,4 @@ int decrypt(char* message, char* cipher, int length, private_key ku)
         msg_idx += BLOCK_SIZE - j;
     }
     return msg_idx;
-}
-
-int main()
-{
-    int i;
-    mpz_t M;
-    mpz_t C;
-    mpz_t DC;
-    private_key ku;
-    public_key kp;
-    char buf[6*BLOCK_SIZE];
-
-    mpz_init(M);
-    mpz_init(C);
-    mpz_init(DC);
-
-    /* Initialize public key */
-    mpz_init(kp.n);
-    mpz_init(kp.e);
-    /* Initialize private key */
-    mpz_init(ku.n);
-    mpz_init(ku.e);
-    mpz_init(ku.d);
-    mpz_init(ku.p);
-    mpz_init(ku.q);
-
-    generate_keys(&ku, &kp);
-    printf("---------------Private Key-----------------\n");
-    printf("kp.n is [%s]\n", mpz_get_str(NULL, 16, kp.n));
-    printf("kp.e is [%s]\n", mpz_get_str(NULL, 16, kp.e));
-    printf("---------------Public Key------------------\n");
-    printf("ku.n is [%s]\n", mpz_get_str(NULL, 16, ku.n));
-    printf("ku.e is [%s]\n", mpz_get_str(NULL, 16, ku.e));
-    printf("ku.d is [%s]\n", mpz_get_str(NULL, 16, ku.d));
-    printf("ku.p is [%s]\n", mpz_get_str(NULL, 16, ku.p));
-    printf("ku.q is [%s]\n", mpz_get_str(NULL, 16, ku.q));
-
-    for(i = 0; i < 6*BLOCK_SIZE; i++)
-        buf[i] = rand() % 0xFF;
-
-    mpz_import(M, (6*BLOCK_SIZE), 1, sizeof(buf[0]), 0, 0, buf);
-    printf("original is [%s]\n", mpz_get_str(NULL, 16, M));
-    block_encrypt(C, M, kp);
-    printf("encrypted is [%s]\n", mpz_get_str(NULL, 16, C));
-    block_decrypt(DC, C, ku);
-    printf("decrypted is [%s]\n", mpz_get_str(NULL, 16, DC));
-    return 0;
 }
