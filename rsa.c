@@ -244,25 +244,42 @@ int main()
     mpz_init(ku.q); 
 
     generate_keys(&ku, &kp);
-    printf("---------------Private Key-----------------");
+    printf("---------------Public Key------------------\n");
     printf("kp.n is [%s]\n", mpz_get_str(NULL, 16, kp.n));
     printf("kp.e is [%s]\n", mpz_get_str(NULL, 16, kp.e));
-    printf("---------------Public Key------------------");
+    printf("\n");
+    printf("---------------Private Key-----------------\n");
     printf("ku.n is [%s]\n", mpz_get_str(NULL, 16, ku.n));
     printf("ku.e is [%s]\n", mpz_get_str(NULL, 16, ku.e));
     printf("ku.d is [%s]\n", mpz_get_str(NULL, 16, ku.d));
     printf("ku.p is [%s]\n", mpz_get_str(NULL, 16, ku.p));
     printf("ku.q is [%s]\n", mpz_get_str(NULL, 16, ku.q));
+    printf("\n");
 
-    char buf[6*BLOCK_SIZE]; 
-    for(i = 0; i < 6*BLOCK_SIZE; i++)
-        buf[i] = rand() % 0xFF;
+    /* TODO: document size rqmt of ciphertext as fcn of plaintext */
+    char *intro = "The gold is stored at these coordinates... ";
+    char plaintext[1000] = {0};
+    char ciphertext[9999] = {0};
+    char decrypted[9999] = {0};
+    long plaintextlen = 200;
+    long ciphertextlen;
+    long decryptedlen;
 
-    mpz_import(M, (6*BLOCK_SIZE), 1, sizeof(buf[0]), 0, 0, buf);
-    printf("original is [%s]\n", mpz_get_str(NULL, 16, M)); 
-    block_encrypt(C, M, kp);
-    printf("encrypted is [%s]\n", mpz_get_str(NULL, 16, C));
-    block_decrypt(DC, C, ku);
-    printf("decrypted is [%s]\n", mpz_get_str(NULL, 16, DC));
+    memcpy(plaintext, intro, strlen(intro));
+    for(i = strlen(intro); i < plaintextlen; i++)
+        plaintext[i] = '0' + rand() % 10;
+    plaintext[plaintextlen - 1] = 0x00;
+
+    ciphertextlen = encrypt(ciphertext, plaintext, 3*BLOCK_SIZE, kp);
+    decryptedlen = decrypt(decrypted, ciphertext, 4*BLOCK_SIZE, ku);
+
+    printf("---------------Plaintext (ASCII)-----------\n");
+    printf("%s\n\n", plaintext); 
+    printf("---------------Ciphertext (HEX)------------\n");
+    for (i = 0; i < ciphertextlen; i++)
+        printf("%02X", ciphertext[i]);
+    printf("\n\n");
+    printf("---------------Recovered (ASCII)-----------\n");
+    printf("%s\n\n", decrypted);
     return 0;
 }
