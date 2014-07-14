@@ -244,16 +244,18 @@ int main()
     mpz_init(ku.q); 
 
     generate_keys(&ku, &kp);
-    printf("---------------Private Key-----------------");
+    printf("---------------Private Key-----------------\n");
     printf("kp.n is [%s]\n", mpz_get_str(NULL, 16, kp.n));
     printf("kp.e is [%s]\n", mpz_get_str(NULL, 16, kp.e));
-    printf("---------------Public Key------------------");
+    puts("");
+    printf("---------------Public Key------------------\n");
     printf("ku.n is [%s]\n", mpz_get_str(NULL, 16, ku.n));
     printf("ku.e is [%s]\n", mpz_get_str(NULL, 16, ku.e));
     printf("ku.d is [%s]\n", mpz_get_str(NULL, 16, ku.d));
     printf("ku.p is [%s]\n", mpz_get_str(NULL, 16, ku.p));
     printf("ku.q is [%s]\n", mpz_get_str(NULL, 16, ku.q));
-
+    puts("");
+    
     char buf[6*BLOCK_SIZE]; 
     for(i = 0; i < 6*BLOCK_SIZE; i++)
         buf[i] = rand() % 0xFF;
